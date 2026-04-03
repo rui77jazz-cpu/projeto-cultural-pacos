@@ -182,28 +182,21 @@
 
   <div class="toast" id="toast-global"></div>
 
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script>
-    // ── ARMAZENAMENTO TEMPORÁRIO (sem Firebase) ──
-    // Os dados ficam na memória enquanto a página está aberta.
-    // Quando ligarmos ao Firebase, ficam guardados para sempre.
-    let _sociosDB = [];
-    let _idCounter = 1;
-
-    const db = {
-      get: () => [..._sociosDB],
-      add: (dados) => {
-        const id = 's' + (_idCounter++);
-        _sociosDB.push({ id, criadoEm: Date.now(), ...dados });
-        return id;
-      },
-      update: (id, dados) => {
-        const i = _sociosDB.findIndex(s => s.id === id);
-        if (i !== -1) _sociosDB[i] = { ..._sociosDB[i], ...dados };
-      },
-      delete: (id) => {
-        _sociosDB = _sociosDB.filter(s => s.id !== id);
-      }
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6Rb_cQcs9RRXwiOFtn6ikI7h0swS5h6g",
+      authDomain: "pacos-cultura.firebaseapp.com",
+      projectId: "pacos-cultura",
+      storageBucket: "pacos-cultura.firebasestorage.app",
+      messagingSenderId: "830820622683",
+      appId: "1:830820622683:web:ab402d8c5cc599a2d6ba7e"
     };
+    firebase.initializeApp(firebaseConfig);
+    const _db = firebase.firestore();
+    const COL = "socios-fundadores";
 
     function mostrarToast(msg) {
       const t = document.getElementById('toast-global');
@@ -232,7 +225,10 @@
 
       async function carregarSocios() {
         setCarregando(true);
-        setSocios(db.get());
+        try {
+          const snap = await _db.collection(COL).orderBy('criadoEm','asc').get();
+          setSocios(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch(e) { mostrarToast('Erro ao carregar'); }
         setCarregando(false);
       }
 
@@ -251,20 +247,23 @@
       async function guardar() {
         if (!form.nome.trim() && !form.tel.trim()) { mostrarToast('Preenche pelo menos o nome ou telemóvel'); return; }
         const dados = { nome:form.nome.trim(), tel:form.tel.trim(), email:form.email.trim(), profissao:form.profissao.trim(), notas:form.notas.trim() };
-        if (editandoId) {
-          db.update(editandoId, dados);
-          mostrarToast('Sócio atualizado ✓');
-        } else {
-          db.add(dados);
-          mostrarToast('Sócio adicionado ✓');
-        }
-        setModalAberto(false);
-        carregarSocios();
+        try {
+          if (editandoId) {
+            await _db.collection(COL).doc(editandoId).update(dados);
+            mostrarToast('Sócio atualizado ✓');
+          } else {
+            dados.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+            await _db.collection(COL).add(dados);
+            mostrarToast('Sócio adicionado ✓');
+          }
+          setModalAberto(false);
+          carregarSocios();
+        } catch(e) { mostrarToast('Erro ao guardar'); }
       }
 
       async function apagar(id, nome) {
         if (!confirm(`Apagar "${nome}"?`)) return;
-        db.delete(id);
+        await _db.collection(COL).doc(id).delete();
         carregarSocios();
         mostrarToast('Removido');
       }
