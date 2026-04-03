@@ -7,18 +7,373 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Georgia, serif; background: #F5F0E8; }
     ::-webkit-scrollbar { height: 4px; width: 4px; }
     ::-webkit-scrollbar-track { background: #22344A; }
     ::-webkit-scrollbar-thumb { background: #C8973A; }
+
+    /* ── MODAL SÓCIOS ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15,35,56,0.75);
+      z-index: 1000;
+      display: flex; align-items: flex-end;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .modal-overlay.aberto { opacity: 1; pointer-events: all; }
+    .modal-sheet {
+      background: #F7F2EA;
+      border-radius: 20px 20px 0 0;
+      padding: 1.2rem 1.1rem 2.5rem;
+      width: 100%;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
+      max-height: 92vh; overflow-y: auto;
+    }
+    .modal-overlay.aberto .modal-sheet { transform: translateY(0); }
+    .modal-handle {
+      width: 40px; height: 4px;
+      background: #D4CDBF; border-radius: 99px;
+      margin: 0 auto 1rem;
+    }
+    .modal-titulo {
+      font-family: Georgia, serif;
+      font-size: 1.15rem; color: #1A3C5E;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid #C8973A;
+      padding-bottom: 0.5rem;
+    }
+    .campo { margin-bottom: 0.85rem; }
+    .campo label {
+      display: block; font-size: 0.65rem;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: #888; margin-bottom: 0.35rem;
+      font-family: Georgia, serif;
+    }
+    .campo input, .campo textarea, .campo select {
+      width: 100%; border: 1.5px solid #D4CDBF;
+      border-radius: 8px; padding: 0.75rem 0.85rem;
+      font-size: 1rem; font-family: Georgia, serif;
+      color: #1A3C5E; background: white; outline: none;
+      transition: border-color 0.2s; -webkit-appearance: none;
+    }
+    .campo input:focus, .campo textarea:focus { border-color: #C8973A; }
+    .campo textarea { resize: none; height: 72px; }
+    .modal-btns { display: flex; gap: 0.6rem; margin-top: 1rem; }
+    .btn-cancelar {
+      flex: 1; background: #E8E0D0; border: none;
+      border-radius: 10px; padding: 0.85rem;
+      font-family: Georgia, serif; font-size: 0.9rem;
+      color: #888; cursor: pointer;
+    }
+    .btn-guardar {
+      flex: 2; background: #1A3C5E; border: none;
+      border-radius: 10px; padding: 0.85rem;
+      font-family: Georgia, serif; font-size: 0.9rem;
+      font-weight: bold; color: white; cursor: pointer;
+    }
+    .btn-guardar:active { background: #22344A; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 1.5rem; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1A3C5E; color: white;
+      padding: 0.6rem 1.2rem; border-radius: 99px;
+      font-size: 0.82rem; z-index: 2000;
+      transition: transform 0.3s ease;
+      white-space: nowrap; border-left: 3px solid #C8973A;
+      font-family: Georgia, serif;
+    }
+    .toast.visivel { transform: translateX(-50%) translateY(0); }
+
+    /* Contador barra */
+    .contador-wrap {
+      background: #22344A; border-radius: 10px;
+      padding: 0.9rem 1rem; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .contador-num {
+      font-size: 2rem; color: #C8973A;
+      font-family: Georgia, serif; line-height: 1;
+    }
+    .contador-sub { font-size: 0.65rem; color: #aac4d8; letter-spacing: 0.1em; text-transform: uppercase; }
+    .barra-track {
+      flex: 1; background: rgba(255,255,255,0.1);
+      border-radius: 99px; height: 6px; overflow: hidden;
+    }
+    .barra-fill {
+      background: linear-gradient(90deg, #C8973A, #E8B96A);
+      height: 100%; border-radius: 99px;
+      transition: width 0.5s ease;
+    }
+
+    /* Cards sócios */
+    .socio-card {
+      background: white; border-radius: 10px;
+      padding: 0.8rem 0.9rem; margin-bottom: 0.55rem;
+      display: flex; align-items: center; gap: 0.8rem;
+      border-left: 3px solid #C8973A;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .socio-num {
+      font-family: Georgia, serif; color: #C8973A;
+      font-size: 1rem; min-width: 24px; text-align: center;
+    }
+    .socio-info { flex: 1; min-width: 0; }
+    .socio-nome { font-size: 0.9rem; font-weight: bold; color: #1A3C5E; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .socio-det { font-size: 0.72rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .btn-ic { background: none; border: none; cursor: pointer; padding: 0.3rem; font-size: 0.95rem; border-radius: 6px; }
+    .btn-ic:active { background: #F0EBE0; }
+
+    /* Btn adicionar */
+    .btn-add-socio {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.5rem; background: #C8973A; color: #1A3C5E;
+      border: none; border-radius: 10px; padding: 0.85rem;
+      font-family: Georgia, serif; font-size: 0.9rem;
+      font-weight: bold; cursor: pointer; width: 100%;
+      margin-bottom: 1rem;
+      box-shadow: 0 3px 12px rgba(200,151,58,0.3);
+    }
+    .btn-add-socio:active { opacity: 0.85; }
+
+    /* Login sócios */
+    .login-socio {
+      background: #22344A; border-radius: 12px;
+      padding: 1.5rem; max-width: 320px; margin: 0 auto;
+      text-align: center;
+    }
+    .login-socio-titulo {
+      color: #C8973A; font-size: 1rem; margin-bottom: 0.3rem;
+    }
+    .login-socio-sub { color: #aac4d8; font-size: 0.72rem; margin-bottom: 1.2rem; letter-spacing: 0.08em; }
+    .login-socio input {
+      width: 100%; background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 8px;
+      padding: 0.75rem 1rem; color: white; font-size: 1rem;
+      font-family: Georgia, serif; outline: none; margin-bottom: 0.8rem;
+      letter-spacing: 0.2em; text-align: center;
+    }
+    .login-socio input:focus { border-color: #C8973A; }
+    .btn-entrar {
+      width: 100%; background: #C8973A; border: none;
+      border-radius: 8px; padding: 0.75rem;
+      font-family: Georgia, serif; font-weight: bold;
+      font-size: 0.9rem; color: #1A3C5E; cursor: pointer;
+    }
+    .erro-pass { color: #ff8080; font-size: 0.78rem; margin-top: 0.5rem; }
+
+    .btn-exportar-csv {
+      background: none; border: 1px solid #C8973A;
+      color: #C8973A; border-radius: 8px; padding: 0.3rem 0.7rem;
+      font-size: 0.7rem; font-family: Georgia, serif; cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
+
+  <div class="toast" id="toast-global"></div>
+
+  <script>
+    // ── ARMAZENAMENTO TEMPORÁRIO (sem Firebase) ──
+    // Os dados ficam na memória enquanto a página está aberta.
+    // Quando ligarmos ao Firebase, ficam guardados para sempre.
+    let _sociosDB = [];
+    let _idCounter = 1;
+
+    const db = {
+      get: () => [..._sociosDB],
+      add: (dados) => {
+        const id = 's' + (_idCounter++);
+        _sociosDB.push({ id, criadoEm: Date.now(), ...dados });
+        return id;
+      },
+      update: (id, dados) => {
+        const i = _sociosDB.findIndex(s => s.id === id);
+        if (i !== -1) _sociosDB[i] = { ..._sociosDB[i], ...dados };
+      },
+      delete: (id) => {
+        _sociosDB = _sociosDB.filter(s => s.id !== id);
+      }
+    };
+
+    function mostrarToast(msg) {
+      const t = document.getElementById('toast-global');
+      t.textContent = msg;
+      t.classList.add('visivel');
+      setTimeout(() => t.classList.remove('visivel'), 2500);
+    }
+  </script>
+
   <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect, useRef } = React;
+
+    // ────────────────────────────────────────────
+    // COMPONENTE SÓCIOS FUNDADORES
+    // ────────────────────────────────────────────
+    function SociosModule() {
+      const [socios, setSocios] = useState([]);
+      const [modalAberto, setModalAberto] = useState(false);
+      const [editandoId, setEditandoId] = useState(null);
+      const [form, setForm] = useState({ nome:'', tel:'', email:'', profissao:'', notas:'' });
+      const [carregando, setCarregando] = useState(false);
+
+      useEffect(() => {
+        carregarSocios();
+      }, []);
+
+      async function carregarSocios() {
+        setCarregando(true);
+        setSocios(db.get());
+        setCarregando(false);
+      }
+
+      function abrirNovo() {
+        setEditandoId(null);
+        setForm({ nome:'', tel:'', email:'', profissao:'', notas:'' });
+        setModalAberto(true);
+      }
+
+      function abrirEditar(s) {
+        setEditandoId(s.id);
+        setForm({ nome:s.nome||'', tel:s.tel||'', email:s.email||'', profissao:s.profissao||'', notas:s.notas||'' });
+        setModalAberto(true);
+      }
+
+      async function guardar() {
+        if (!form.nome.trim() && !form.tel.trim()) { mostrarToast('Preenche pelo menos o nome ou telemóvel'); return; }
+        const dados = { nome:form.nome.trim(), tel:form.tel.trim(), email:form.email.trim(), profissao:form.profissao.trim(), notas:form.notas.trim() };
+        if (editandoId) {
+          db.update(editandoId, dados);
+          mostrarToast('Sócio atualizado ✓');
+        } else {
+          db.add(dados);
+          mostrarToast('Sócio adicionado ✓');
+        }
+        setModalAberto(false);
+        carregarSocios();
+      }
+
+      async function apagar(id, nome) {
+        if (!confirm(`Apagar "${nome}"?`)) return;
+        db.delete(id);
+        carregarSocios();
+        mostrarToast('Removido');
+      }
+
+      function exportarCSV() {
+        if (!socios.length) { mostrarToast('Sem dados para exportar'); return; }
+        const linhas = [['Nº','Nome','Telemóvel','Email','Profissão','Notas']];
+        socios.forEach((s,i) => linhas.push([i+1, s.nome, s.tel||'', s.email||'', s.profissao||'', s.notas||'']));
+        const csv = linhas.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+        const blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = 'socios-fundadores.csv'; a.click();
+      }
+
+      // ── PAINEL PRINCIPAL ──
+      const n = socios.length;
+      const pct = Math.round((n/50)*100);
+      return (
+        <div>
+          {/* Contador */}
+          <div className="contador-wrap">
+            <div>
+              <div className="contador-num">{n}</div>
+              <div className="contador-sub">de 50</div>
+            </div>
+            <div style={{ flex:1 }}>
+              <div className="barra-track">
+                <div className="barra-fill" style={{ width: pct+'%' }}></div>
+              </div>
+              <div style={{ fontSize:'0.62rem', color:'#aac4d8', textAlign:'right', marginTop:'0.2rem' }}>{pct}% do objetivo</div>
+            </div>
+          </div>
+
+          {/* Botão adicionar */}
+          <button className="btn-add-socio" onClick={abrirNovo}>
+            ＋ Adicionar Sócio Fundador
+          </button>
+
+          {/* Header lista */}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.6rem' }}>
+            <div style={{ fontSize:'0.65rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#888' }}>Inscritos</div>
+            <button className="btn-exportar-csv" onClick={exportarCSV}>Exportar CSV ↓</button>
+          </div>
+
+          {/* Lista */}
+          {carregando && <div style={{ textAlign:'center', padding:'1.5rem', color:'#888', fontSize:'0.85rem' }}>A carregar...</div>}
+
+          {!carregando && n === 0 && (
+            <div style={{ textAlign:'center', padding:'2.5rem 1rem', color:'#aaa' }}>
+              <div style={{ fontSize:'2rem', marginBottom:'0.5rem' }}>🤝</div>
+              <div style={{ fontSize:'0.82rem' }}>Ainda nenhum sócio inscrito</div>
+            </div>
+          )}
+
+          {socios.map((s, i) => (
+            <div key={s.id} className="socio-card">
+              <div className="socio-num">{i+1}</div>
+              <div className="socio-info">
+                <div className="socio-nome">{s.nome || s.tel || '(sem nome)'}</div>
+                <div className="socio-det">{[s.profissao, s.tel].filter(Boolean).join(' · ')}</div>
+              </div>
+              <button className="btn-ic" onClick={() => abrirEditar(s)} title="Editar">✏️</button>
+              <button className="btn-ic" onClick={() => apagar(s.id, s.nome)} title="Apagar">🗑️</button>
+            </div>
+          ))}
+
+          {/* Modal */}
+          <div
+            className={`modal-overlay ${modalAberto ? 'aberto' : ''}`}
+            onClick={e => { if(e.target.classList.contains('modal-overlay')) setModalAberto(false); }}
+          >
+            <div className="modal-sheet">
+              <div className="modal-handle"></div>
+              <div className="modal-titulo">{editandoId ? 'Editar Sócio' : 'Novo Sócio Fundador'}</div>
+
+              <div className="campo">
+                <label>Nome completo</label>
+                <input type="text" value={form.nome} onChange={e => setForm({...form, nome:e.target.value})} placeholder="Nome e apelido" autoFocus />
+              </div>
+              <div className="campo">
+                <label>Telemóvel</label>
+                <input type="tel" value={form.tel} onChange={e => setForm({...form, tel:e.target.value})} placeholder="912 345 678" />
+              </div>
+              <div className="campo">
+                <label>Email</label>
+                <input type="email" value={form.email} onChange={e => setForm({...form, email:e.target.value})} placeholder="nome@email.com" />
+              </div>
+              <div className="campo">
+                <label>Profissão / Área</label>
+                <input type="text" value={form.profissao} onChange={e => setForm({...form, profissao:e.target.value})} placeholder="Ex: Arquiteto, Médica, Empresário..." />
+              </div>
+              <div className="campo">
+                <label>Notas</label>
+                <textarea value={form.notas} onChange={e => setForm({...form, notas:e.target.value})} placeholder="Observações, referências, disponibilidade..."></textarea>
+              </div>
+
+              <div className="modal-btns">
+                <button className="btn-cancelar" onClick={() => setModalAberto(false)}>Cancelar</button>
+                <button className="btn-guardar" onClick={guardar}>Guardar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ────────────────────────────────────────────
+    // RESTO DO SITE (igual ao original)
+    // ────────────────────────────────────────────
 
     function downloadWord(filename, htmlContent) {
       const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office'
@@ -54,17 +409,17 @@
         <h3>Artigo 2.º — Sede</h3><p>A Associação tem sede em <span class="field">[MORADA COMPLETA]</span>.</p>
         <h3>Artigo 3.º — Duração</h3><p>A Associação constitui-se por tempo indeterminado.</p>
         <h2>CAPÍTULO II — Fins e Atividades</h2>
-        <h3>Artigo 4.º — Fins</h3><p>Promover a cultura, a criação artística e o debate de ideias no município de Paços de Ferreira; organizar eventos culturais, artísticos e científicos; apoiar artistas e criadores; contribuir para o desenvolvimento cultural e económico do território.</p>
-        <h3>Artigo 5.º — Atividades</h3><p>Organizar espetáculos, concertos, exposições, conferências, festivais; editar publicações; estabelecer parcerias; candidatar-se a financiamento nacional e europeu.</p>
+        <h3>Artigo 4.º — Fins</h3><p>Promover a cultura, a criação artística e o debate de ideias no município de Paços de Ferreira.</p>
+        <h3>Artigo 5.º — Atividades</h3><p>Organizar espetáculos, concertos, exposições, conferências, festivais; editar publicações; estabelecer parcerias.</p>
         <h2>CAPÍTULO III — Associados</h2>
         <h3>Artigo 6.º — Categorias</h3><p>Sócios Fundadores, Sócios Efetivos, Sócios Familiares, Sócios Jovens e Sócios Honorários.</p>
         <h3>Artigo 7.º — Quotas</h3><p>O valor das quotas é fixado anualmente pela Assembleia Geral.</p>
         <h2>CAPÍTULO IV — Órgãos Sociais</h2>
         <h3>Artigo 8.º</h3><p>São órgãos: a Assembleia Geral; a Direção; e o Conselho Fiscal.</p>
-        <h3>Artigo 9.º — Dissolução</h3><p>Só deliberada em AG com 3/4 dos associados e aprovação por 2/3. O património será entregue a entidade de fins análogos.</p>
+        <h3>Artigo 9.º — Dissolução</h3><p>Só deliberada em AG com 3/4 dos associados e aprovação por 2/3.</p>
         <p><br><br>Paços de Ferreira, <span class="field">[DATA]</span></p>` },
       { label: "Ata de Fundação", filename: "ata_assembleia_fundadora.doc", icon: "📝",
-        html: `<h1>ATA DA ASSEMBLEIA GERAL FUNDADORA<br><span class="field">[NOME DA ASSOCIAÇÃO]</span></h1>
+        html: `<h1>ATA DA ASSEMBLEIA GERAL FUNDADORA</h1>
         <p>Aos <span class="field">[DIA]</span> dias do mês de <span class="field">[MÊS]</span> de 2026, pelas <span class="field">[HORA]</span> horas, reuniram em <span class="field">[LOCAL]</span>.</p>
         <h2>1. Mesa da Assembleia</h2><p>Presidente: <span class="field">[NOME]</span>. Secretário: <span class="field">[NOME]</span>.</p>
         <h2>2. Aprovação dos Estatutos</h2><p>Aprovados por unanimidade.</p>
@@ -72,40 +427,24 @@
         <table><tr><th>Cargo</th><th>Nome</th><th>NIF</th></tr>
         <tr><td>Presidente da Direção</td><td><span class="field">[NOME]</span></td><td><span class="field">[NIF]</span></td></tr>
         <tr><td>Tesoureiro/a</td><td><span class="field">[NOME]</span></td><td><span class="field">[NIF]</span></td></tr>
-        <tr><td>Secretário/a</td><td><span class="field">[NOME]</span></td><td><span class="field">[NIF]</span></td></tr></table>
-        <h2>4. Lista de Presenças</h2>
-        <table><tr><th>Nome Completo</th><th>NIF</th><th>Assinatura</th></tr>
-        <tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr>
-        <tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr>
-        <tr><td></td><td></td><td></td></tr></table>` },
+        <tr><td>Secretário/a</td><td><span class="field">[NOME]</span></td><td><span class="field">[NIF]</span></td></tr></table>` },
       { label: "Convocatória", filename: "convocatoria_assembleia_fundadora.doc", icon: "✉️",
         html: `<h1>CONVOCATÓRIA — Assembleia Geral Fundadora</h1>
         <p><strong>Data:</strong> <span class="field">[DATA]</span> &nbsp; <strong>Hora:</strong> <span class="field">[HORA]</span> &nbsp; <strong>Local:</strong> <span class="field">[LOCAL]</span></p>
         <h2>Ordem de Trabalhos</h2>
         <p>1. Aprovação dos estatutos<br>2. Eleição dos corpos sociais<br>3. Fixação das quotas<br>4. Outros assuntos</p>
-        <p>Trazer documento de identificação e NIF.</p>
-        <p><br>Paços de Ferreira, <span class="field">[DATA DA CONVOCATÓRIA]</span><br>A Comissão Organizadora</p>` },
+        <p>Trazer documento de identificação e NIF.</p>` },
       { label: "Ficha de Sócio", filename: "ficha_socio_fundador.doc", icon: "🪪",
-        html: `<h1>FICHA DE INSCRIÇÃO — SÓCIO FUNDADOR<br><span class="field">[NOME DA ASSOCIAÇÃO]</span></h1>
+        html: `<h1>FICHA DE INSCRIÇÃO — SÓCIO FUNDADOR</h1>
         <table><tr><th>Campo</th><th>Preenchimento</th></tr>
         <tr><td>Nome completo</td><td></td></tr><tr><td>NIF</td><td></td></tr>
-        <tr><td>Cartão de Cidadão n.º</td><td></td></tr><tr><td>Email</td><td></td></tr>
-        <tr><td>Telefone</td><td></td></tr><tr><td>Profissão</td><td></td></tr></table>
-        <h2>Categoria</h2>
-        <table><tr><th>Categoria</th><th>Valor</th><th>✓</th></tr>
-        <tr><td>Sócio Fundador</td><td><span class="field">[VALOR]</span>€</td><td>☐</td></tr>
-        <tr><td>Sócio Individual</td><td><span class="field">[VALOR]</span>€</td><td>☐</td></tr>
-        <tr><td>Sócio Família</td><td><span class="field">[VALOR]</span>€</td><td>☐</td></tr>
-        <tr><td>Sócio Jovem</td><td><span class="field">[VALOR]</span>€</td><td>☐</td></tr></table>
-        <p><br>Assinatura: <span class="field">____________________________</span></p>` },
+        <tr><td>Email</td><td></td></tr><tr><td>Telefone</td><td></td></tr>
+        <tr><td>Profissão</td><td></td></tr></table>` },
       { label: "Protocolo de Espaços", filename: "protocolo_espacos.doc", icon: "🏛",
-        html: `<h1>PROTOCOLO DE COOPERAÇÃO<br>Câmara Municipal de Paços de Ferreira e <span class="field">[NOME DA ASSOCIAÇÃO]</span></h1>
-        <h2>Cláusula 1.ª — Objeto</h2><p>Cedência de utilização dos espaços municipais para atividades culturais de interesse público.</p>
-        <h2>Cláusula 2.ª — Espaços Cedidos</h2><p>a) Auditório da Biblioteca Municipal;<br>b) Espaço museológico adjacente;<br>c) <span class="field">[Casa em Pedra]</span>;<br>d) Parque Urbano, mediante comunicação prévia.</p>
-        <h2>Cláusula 3.ª — Condições</h2><p>Utilização para fins culturais; conservação dos espaços; comunicação prévia; seguro de responsabilidade civil obrigatório.</p>
-        <h2>Cláusula 4.ª — Contrapartidas</h2><p>Relatório anual; logo da Câmara em toda a comunicação; lugares reservados por evento para iniciativas municipais.</p>
-        <h2>Cláusula 5.ª — Vigência</h2><p><span class="field">[X]</span> anos, renovável, com denúncia com 60 dias de antecedência.</p>
-        <p><br>O Presidente da Câmara: <span class="field">____________________________</span><br><br>O Presidente da Associação: <span class="field">____________________________</span></p>` }
+        html: `<h1>PROTOCOLO DE COOPERAÇÃO<br>Câmara Municipal de Paços de Ferreira</h1>
+        <h2>Cláusula 1.ª — Objeto</h2><p>Cedência de espaços municipais para atividades culturais de interesse público.</p>
+        <h2>Cláusula 2.ª — Espaços</h2><p>Auditório da Biblioteca; Museu; Casa em Pedra; Parque Urbano.</p>
+        <h2>Cláusula 3.ª — Condições</h2><p>Fins culturais; conservação; comunicação prévia; seguro obrigatório.</p>` }
     ];
 
     const retorica = [
@@ -127,15 +466,13 @@
 
     const portavozFestival = [
       { titulo: "Discurso de Abertura do Festival", cor: "#1A5E3C", contexto: "Início do festival, sábado de manhã, em público.",
-        texto: `"Bem-vindos.\n\nNão há muito a dizer, porque o festival vai dizer por si mesmo.\n\nEste parque é vosso. Estes espaços são vossos. O que acontece aqui durante este fim de semana não é um espetáculo que vos damos — é uma conversa que começamos juntos.\n\nHá um poeta desta cidade cuja voz está hoje no museu ali ao lado. Há um saltimbanco que vai aparecer onde menos esperarem. Há música na relva, teatro sem palavras, e um espaço onde dois desconhecidos podem sentar-se à mesma mesa e sair com qualquer coisa em comum.\n\nIsto é o que acreditamos que a cultura pode fazer. Não resolver problemas. Criar condições para que as pessoas sejam um pouco mais curiosas umas sobre as outras.\n\nObrigado por estarem aqui. Agora vai acontecer."` },
+        texto: `"Bem-vindos.\n\nNão há muito a dizer, porque o festival vai dizer por si mesmo.\n\nEste parque é vosso. Estes espaços são vossos. O que acontece aqui durante este fim de semana não é um espetáculo que vos damos — é uma conversa que começamos juntos.\n\nHá um poeta desta cidade cuja voz está hoje no museu ali ao lado. Há um saltimbanco que vai aparecer onde menos esperarem. Há música na relva, teatro sem palavras, e um espaço onde dois desconhecidos podem sentar-se à mesma mesa e sair com qualquer coisa em comum.\n\nObrigado por estarem aqui. Agora vai acontecer."` },
       { titulo: "«Porquê um festival tão grande para começar?»", cor: "#1A3C5E", contexto: "Jornalistas, parceiros, céticos.",
         texto: `"Porque começar em pequeno seria subestimar a cidade e subestimar o público. Paços de Ferreira não precisava de mais um evento de nicho. Precisava de um sinal claro de que algo mudou. O festival não é um fim — é uma apresentação. O trabalho real começa no fim de semana a seguir."` },
       { titulo: "«Quem paga isto?»", cor: "#6B2D1A", contexto: "Imprensa, munícipes, políticos.",
         texto: `"A maioria do financiamento vem do sector privado — empresas que acreditam que investir na cultura do território é investir no próprio território. Temos também apoio da Câmara Municipal, que disponibilizou os espaços. Não dependemos de dinheiro público para existir — isso é uma escolha deliberada de independência."` },
       { titulo: "«E depois do festival, o que acontece?»", cor: "#4A2060", contexto: "Qualquer contexto.",
-        texto: `"O festival é o início, não o destino. A partir de outubro, programamos regularmente — nas sextas-feiras, nos espaços da cidade. Jazz, teatro, poesia, debate. Não todas as semanas — mas quando acontece, acontece com qualidade."` },
-      { titulo: "«Porque a homenagem ao José Carlos Villar?»", cor: "#3A3A3A", contexto: "Imprensa, curiosos, conhecidos do poeta.",
-        texto: `"José Carlos Villar foi o poeta desta cidade. Viveu aqui, escreveu aqui. Esta cidade deve-lhe o reconhecimento que ele não teve em vida com a dimensão que merecia. Este festival é o primeiro espaço onde a sua obra pode ser vista, ouvida e sentida como um todo. A curadoria é de alguém que o conheceu. A música é de quem partilhou a sua vida."` }
+        texto: `"O festival é o início, não o destino. A partir de outubro, programamos regularmente — nas sextas-feiras, nos espaços da cidade. Jazz, teatro, poesia, debate. Não todas as semanas — mas quando acontece, acontece com qualidade."` }
     ];
 
     const presidentePublico = {
@@ -146,43 +483,36 @@
         { contexto: "Quando há ceticismo", frase: `"Entendo o ceticismo. O que nos distingue é que não dependemos de financiamento público para existir, temos 50 pessoas comprometidas desde o primeiro dia, e temos agenda fechada até dezembro. Não estamos a prometer — estamos a fazer."` }
       ],
       perguntas: [
-        { p: "Qual é a diferença entre isto e o que já existe em Paços de Ferreira?", r: "A diferença é a regularidade, a independência editorial e o critério de qualidade. Não somos um evento — somos uma estrutura permanente que programa com consistência e sem agenda política." },
+        { p: "Qual é a diferença entre isto e o que já existe?", r: "A diferença é a regularidade, a independência editorial e o critério de qualidade. Não somos um evento — somos uma estrutura permanente que programa com consistência e sem agenda política." },
         { p: "Como vão financiar isto a longo prazo?", r: "Com mecenato privado, quotas de sócios e apoios públicos pontuais. O modelo assenta na diversificação — nenhuma fonte sozinha, mas em conjunto criam estabilidade." },
-        { p: "O festival não é demasiado ambicioso para uma primeira edição?", r: "Um primeiro evento tem de ser marcante — senão não existe segunda edição. Foi planeado com rigor orçamental e com parceiros com experiência comprovada. Ambição com planeamento não é risco — é estratégia." },
-        { p: "Como vão garantir que a associação não morre ao fim de dois anos?", r: "Com três coisas: 50 sócios fundadores comprometidos, financiamento privado maioritário e uma equipa com funções definidas. E com humildade para avaliar e ajustar no final de cada trimestre." },
-        { p: "Qual é o vosso critério de qualidade — quem decide?", r: "A direção, com base em princípios editoriais definidos nos estatutos: diversidade de linguagens, excelência artística e acessibilidade ao público." },
-        { p: "Porque é que a câmara deve apoiar isto?", r: "Porque os espaços estão subutilizados e porque um município com vida cultural ativa é mais atrativo para residir, trabalhar e investir. É um retorno direto para a câmara." }
+        { p: "O festival não é demasiado ambicioso para uma primeira edição?", r: "Um primeiro evento tem de ser marcante — senão não existe segunda edição. Foi planeado com rigor orçamental e com parceiros com experiência comprovada." },
+        { p: "Como vão garantir que a associação não morre ao fim de dois anos?", r: "Com três coisas: 50 sócios fundadores comprometidos, financiamento privado maioritário e uma equipa com funções definidas." },
+        { p: "Porquê a câmara deve apoiar isto?", r: "Porque os espaços estão subutilizados e porque um município com vida cultural ativa é mais atrativo para residir, trabalhar e investir." }
       ],
       mnemonicas: [
-        { sigla: "Q.R.E.I.", expansao: "Qualidade · Regularidade · Enraizamento · Independência", uso: "Os quatro valores. Para qualquer pergunta sobre o que nos define." },
-        { sigla: "3 E's", expansao: "Espaços · Equipa · Estratégia", uso: "O que garante sustentabilidade. Resposta ao ceticismo." },
-        { sigla: "D.R.Q.", expansao: "Diversidade · Regularidade · Qualidade", uso: "Os três critérios editoriais de programação." },
+        { sigla: "Q.R.E.I.", expansao: "Qualidade · Regularidade · Enraizamento · Independência", uso: "Os quatro valores." },
+        { sigla: "3 E's", expansao: "Espaços · Equipa · Estratégia", uso: "O que garante sustentabilidade." },
         { sigla: "C.I.P.", expansao: "Cultura é Infraestrutura Produtiva", uso: "Argumento central para mecenas e câmara." },
-        { sigla: "50 · 4 · 1", expansao: "50 sócios fundadores · 4 espaços · 1 missão", uso: "Apresentação rápida da estrutura em três números." },
-        { sigla: "2 dias → 1 ano → 10 anos", expansao: "O festival dura 2 dias. A temporada 1 ano. O projeto é para 10 anos.", uso: "Para contextualizar o festival como início, não como fim." }
+        { sigla: "50 · 4 · 1", expansao: "50 sócios fundadores · 4 espaços · 1 missão", uso: "Apresentação rápida da estrutura." }
       ]
     };
 
     const parqueUrbano = {
       funcao: [
-        { titulo: "O Parque como Espaço Pedagógico", cor: "#1A5E3C",
-          texto: "Um parque urbano não é apenas um espaço de lazer. É o espaço público por excelência — o lugar mais democrático de uma cidade, onde todas as classes sociais coexistem sem mediação. Em toda a história da cultura ocidental, desde a ágora grega ao jardim público do século XIX, o espaço aberto foi o lugar onde a comunidade aprendeu a ser comunidade. A qualidade do que acontece num parque define a qualidade de vida urbana de uma cidade." },
-        { titulo: "O Parque como Instrumento de Coesão Social", cor: "#1A3C5E",
-          texto: "Estudos europeus sobre espaços públicos culturais demonstram que a programação cultural de qualidade reduz a segregação social, aumenta o sentimento de pertença e melhora indicadores de bem-estar. Um parque bem programado é um investimento social com retorno mensurável." },
-        { titulo: "A Ocupação como Estratégia", cor: "#4A2060",
-          texto: "A melhor forma de transformar a cultura de um espaço público não é proibir o que existe — é substituí-lo por algo melhor. Uma associação com protocolo assinado, presença regular e programação de qualidade cria progressivamente uma nova norma para o espaço. O público que vem ao jazz na relva no sábado passa a ter uma expectativa diferente sobre o que acontece naquele parque. A expectativa é o instrumento de mudança mais poderoso que existe." }
+        { titulo: "O Parque como Espaço Pedagógico", cor: "#1A5E3C", texto: "Um parque urbano não é apenas um espaço de lazer. É o espaço público por excelência — o lugar mais democrático de uma cidade, onde todas as classes sociais coexistem sem mediação. Em toda a história da cultura ocidental, desde a ágora grega ao jardim público do século XIX, o espaço aberto foi o lugar onde a comunidade aprendeu a ser comunidade." },
+        { titulo: "O Parque como Instrumento de Coesão Social", cor: "#1A3C5E", texto: "Estudos europeus sobre espaços públicos culturais demonstram que a programação cultural de qualidade reduz a segregação social, aumenta o sentimento de pertença e melhora indicadores de bem-estar." },
+        { titulo: "A Ocupação como Estratégia", cor: "#4A2060", texto: "A melhor forma de transformar a cultura de um espaço público não é proibir o que existe — é substituí-lo por algo melhor. Uma associação com protocolo assinado, presença regular e programação de qualidade cria progressivamente uma nova norma para o espaço." }
       ],
       gestao: [
-        { n: "1", titulo: "Critérios de Qualidade para Eventos no Parque", docs: ["Propor à câmara, no âmbito do protocolo de cooperação, um regulamento de utilização do parque para eventos culturais", "O regulamento deve estabelecer critérios mínimos de qualidade sem nomear organizações específicas", "Critérios possíveis: decibéis máximos por horário, tipologia de atividades por zonas, obrigatoriedade de programa aprovado por comissão técnica", "A linguagem é sempre urbanística e de gestão do espaço — nunca de gosto ou preferência cultural"] },
-        { n: "2", titulo: "Protocolo de Uso Prioritário", docs: ["Negociar com a câmara um sistema de calendário partilhado com reserva prioritária para a associação", "A prioridade baseia-se em critérios objetivos: antecedência da reserva, regularidade histórica, tipo de atividade", "Este mecanismo cria progressivamente uma presença dominante sem necessidade de confronto direto"] },
-        { n: "3", titulo: "Identidade Visual do Espaço", docs: ["Propor à câmara a criação de uma identidade visual para o parque como espaço cultural", "Sinalética, nome próprio para a zona de palco, nomenclatura dos percursos", "Quanto mais identidade tiver como espaço cultural, mais difícil é programar nele eventos que contradigam essa identidade"] },
-        { n: "4", titulo: "Educação do Público", docs: ["O público que habitua a ver qualidade torna-se o melhor regulador do espaço", "Newsletters, redes sociais e comunicação clara sobre os critérios da associação educam progressivamente as expectativas", "Criar programa de voluntários e embaixadores da associação no parque durante os eventos"] }
+        { n:"1", titulo:"Critérios de Qualidade para Eventos no Parque", docs:["Propor à câmara um regulamento de utilização do parque para eventos culturais","Critérios: decibéis máximos por horário, tipologia de atividades por zonas, programa aprovado por comissão técnica"] },
+        { n:"2", titulo:"Protocolo de Uso Prioritário", docs:["Negociar calendário partilhado com reserva prioritária para a associação","A prioridade baseia-se em critérios objetivos: antecedência, regularidade histórica, tipo de atividade"] },
+        { n:"3", titulo:"Identidade Visual do Espaço", docs:["Propor sinalética e nome próprio para a zona de palco","Quanto mais identidade tiver como espaço cultural, mais difícil é programar nele eventos que contradigam essa identidade"] }
       ],
       modelos: [
-        ["Parc de la Villette, Paris", "Parque industrial reconvertido em polo cultural permanente — referência europeia de espaço público como infraestrutura cultural"],
-        ["Vondelpark, Amesterdão", "Palco ao ar livre com programação de verão integrada na gestão municipal — coexistência entre lazer e cultura de qualidade"],
-        ["Serralves em Festa, Porto", "Festival gratuito de 40 horas em parque — demonstra o potencial de público com programação exigente"],
-        ["Parques de Almada", "Exemplo português de regulamento municipal de eventos com critérios de qualidade definidos"]
+        ["Parc de la Villette, Paris","Parque industrial reconvertido em polo cultural permanente"],
+        ["Vondelpark, Amesterdão","Palco ao ar livre com programação de verão integrada"],
+        ["Serralves em Festa, Porto","Festival gratuito de 40 horas em parque — referência nacional"],
+        ["Parques de Almada","Exemplo português de regulamento municipal com critérios de qualidade"]
       ]
     };
 
@@ -190,11 +520,11 @@
       { id:1, icon:"◈", title:"Visão & Missão", sections:[
         { heading:"Missão", content:"Promover a cultura, a criação artística e o debate de ideias em Paços de Ferreira, através de uma programação regular, plural e de qualidade, ancorada nos seus espaços patrimoniais e aberta à participação da comunidade." },
         { heading:"Valores Fundadores", list:[
-          ["Qualidade","A excelência é a única forma de construir um público fiel e uma reputação duradoura. Cada evento é uma declaração de intenções sobre o que esta associação é e o que o território merece. Preferimos fazer menos e fazer bem — um evento memorável vale mais do que dez eventos esquecíveis."],
-          ["Pluralidade","A diversidade das linguagens artísticas — das artes performativas às ciências, da música erudita à etnomusicologia, do debate filosófico à criação contemporânea — não é um fim em si mesma, mas um instrumento de desenvolvimento humano e territorial. A cultura é infraestrutura. Um território culturalmente rico atrai talento, fixa população qualificada, gera economia criativa e distingue-se na competição entre regiões. Investir em cultura é investir em prosperidade."],
-          ["Regularidade","A confiança de um público constrói-se com o tempo e com a constância. Uma associação que programa com ritmo cria laços com a comunidade que nenhum evento isolado consegue substituir. A regularidade transforma espectadores ocasionais em comunidade."],
-          ["Enraizamento","Nenhuma cultura nasce do nada. Esta associação reconhece que o território tem memória, tem ofício, tem identidade — e que a sua missão é dialogar com essa herança, interrogá-la e reinventá-la para o presente. Enraizamento não é nostalgia. É saber de onde se vem para ter liberdade de ir mais longe."],
-          ["Independência","A autonomia editorial é condição de sobrevivência artística. Os mecenas financiam a missão — não determinam o conteúdo. Esta distinção não é negociável."]
+          ["Qualidade","A excelência é a única forma de construir um público fiel e uma reputação duradoura. Cada evento é uma declaração de intenções sobre o que esta associação é e o que o território merece."],
+          ["Pluralidade","A diversidade das linguagens artísticas não é um fim em si mesma, mas um instrumento de desenvolvimento humano e territorial. A cultura é infraestrutura."],
+          ["Regularidade","A confiança de um público constrói-se com o tempo e com a constância. A regularidade transforma espectadores ocasionais em comunidade."],
+          ["Enraizamento","Esta associação reconhece que o território tem memória, tem ofício, tem identidade — e que a sua missão é dialogar com essa herança e reinventá-la para o presente."],
+          ["Independência","A autonomia editorial é condição de sobrevivência artística. Os mecenas financiam a missão — não determinam o conteúdo."]
         ]},
         { heading:"Visão a 5 Anos", content:"Que esta associação seja, dentro de cinco anos, a referência cultural do Vale do Sousa — um lugar que programadores de todo o país queiram integrar na sua agenda, que artistas queiram visitar e que os habitantes de Paços de Ferreira sintam como genuinamente seu." }
       ]},
@@ -206,33 +536,29 @@
           { passo:"1.2", titulo:"Convocatória da Assembleia Fundadora", prazo:"8 dias antes", entidade:"Comissão Organizadora", custo:"0€", docs:["Carta ou email com data, hora, local e ordem de trabalhos","Prazo mínimo legal: 8 dias"] }
         ]},
         { heading:"Etapa 2 — Assembleia Fundadora (Maio)", burocracia:[
-          { passo:"2.1", titulo:"Realização da Assembleia", prazo:"1 dia", entidade:"Todos os fundadores", custo:"0€", docs:["Lista de presença assinada por todos os 50 fundadores com NIF","Ata da assembleia — documento legalmente obrigatório","Deve conter: data, local, deliberações, eleições e assinaturas"] },
-          { passo:"2.2", titulo:"Reconhecimento Notarial (recomendado)", prazo:"1–3 dias", entidade:"Cartório Notarial", custo:"20€–60€", docs:["Reconhecimento das assinaturas dos membros da direção eleita","Cópia do CC de cada membro dos corpos sociais"] }
+          { passo:"2.1", titulo:"Realização da Assembleia", prazo:"1 dia", entidade:"Todos os fundadores", custo:"0€", docs:["Lista de presença assinada por todos os 50 fundadores com NIF","Ata da assembleia — documento legalmente obrigatório"] },
+          { passo:"2.2", titulo:"Reconhecimento Notarial", prazo:"1–3 dias", entidade:"Cartório Notarial", custo:"20€–60€", docs:["Reconhecimento das assinaturas dos membros da direção eleita"] }
         ]},
         { heading:"Etapa 3 — Registo e NIF (Maio–Junho)", burocracia:[
-          { passo:"3.1", titulo:"Registo no RNPC", prazo:"5–10 dias úteis", entidade:"IRN — eportugal.gov.pt", custo:"Gratuito", docs:["Requerimento Modelo 1 do RNPC","Dois exemplares dos estatutos assinados","Ata da assembleia fundadora","Declaração de aceitação de cargos pelos eleitos"] },
-          { passo:"3.2", titulo:"NIF nas Finanças", prazo:"1–3 dias úteis", entidade:"Serviço de Finanças local", custo:"0€", docs:["Certidão do RNPC + Ata de fundação + CC do representante legal","Declaração de início de atividade — Modelo 1 IRC"] },
-          { passo:"3.3", titulo:"Abertura de Conta Bancária", prazo:"1–5 dias úteis", entidade:"Banco à escolha", custo:"0€", docs:["Certidão RNPC + NIF + Ata + CC dos titulares","Deliberação da direção a autorizar a abertura"] }
+          { passo:"3.1", titulo:"Registo no RNPC", prazo:"5–10 dias úteis", entidade:"IRN — eportugal.gov.pt", custo:"Gratuito", docs:["Requerimento Modelo 1 do RNPC","Dois exemplares dos estatutos assinados","Ata da assembleia fundadora"] },
+          { passo:"3.2", titulo:"NIF nas Finanças", prazo:"1–3 dias úteis", entidade:"Serviço de Finanças local", custo:"0€", docs:["Certidão do RNPC + Ata de fundação + CC do representante legal"] },
+          { passo:"3.3", titulo:"Abertura de Conta Bancária", prazo:"1–5 dias úteis", entidade:"Banco à escolha", custo:"0€", docs:["Certidão RNPC + NIF + Ata + CC dos titulares"] }
         ]},
         { heading:"Etapa 4 — Acordos e Seguros (Junho)", burocracia:[
-          { passo:"4.1", titulo:"Protocolo com a Câmara Municipal", prazo:"2–4 semanas", entidade:"Câmara Municipal de Paços de Ferreira", custo:"0€", docs:["Protocolo de cooperação — usar modelo para download","Especifica: espaços cedidos, condições, responsabilidades, seguros"] },
+          { passo:"4.1", titulo:"Protocolo com a Câmara Municipal", prazo:"2–4 semanas", entidade:"Câmara Municipal de Paços de Ferreira", custo:"0€", docs:["Protocolo de cooperação — usar modelo para download"] },
           { passo:"4.2", titulo:"Seguro de Responsabilidade Civil", prazo:"1 semana", entidade:"Seguradora", custo:"300€–800€/ano", docs:["Cobertura mínima: 250.000€","Deve cobrir eventos fechados e ao ar livre"] }
-        ]},
-        { heading:"Etapa 5 — Utilidade Pública (após 1 ano)", burocracia:[
-          { passo:"5.1", titulo:"Candidatura ao Estatuto de Utilidade Pública", prazo:"3–6 meses de análise", entidade:"Presidência do Conselho de Ministros", custo:"0€", docs:["Requerimento + estatutos + ata + relatório de atividades","Mínimo 1 ano de atividade — candidatar em setembro 2027","Vantagem: mecenas podem deduzir donativos em IRC"] }
-        ]},
-        { heading:"Arquivo Permanente", steps:["Estatutos — versão original e alterações","Atas de todas as assembleias e reuniões de direção","Certidão do RNPC atualizada","NIF e declarações fiscais anuais","Apólices de seguro em vigor","Contratos com artistas, fornecedores e patrocinadores","Comprovativos de pagamentos e receitas — guardar 10 anos","Lista de sócios com quotas pagas"] }
+        ]}
       ]},
       { id:3, icon:"★", title:"Festival Inaugural", sections:[
         { heading:"O Grande Arranque — 2.º Fim de Semana de Setembro",
           content:"O festival inaugural é a apresentação pública da associação à cidade. Dois dias de animação, teatro de rua, música e cultura que ocupam simultaneamente o Parque Urbano, a Biblioteca, o Museu e a Casa em Pedra. Entrada livre. Abre em grande." },
         { heading:"Narrativa do Festival",
-          content:"Há uma palavra grega que não tem tradução simples: paideia. Significa a formação completa do ser humano — não através de salas de aula, mas através da vida partilhada, da arte, do jogo, do espanto.\n\nEste festival é isso. Durante dois dias, o parque deixa de ser um parque. Torna-se uma cidade dentro da cidade — onde uma criança segue um bufão sem saber para onde vai, onde dois desconhecidos riem da mesma coisa ao mesmo tempo, onde a música sobe da relva sem aviso.\n\nNão há bilhetes. Não há programa obrigatório. Há jazz na relva, um poeta que já não está mas cuja voz ainda ecoa no museu, atores que não falam mas dizem tudo com o corpo, e um saltimbanco que vive do impulso do público.\n\nAcreditamos que a diversidade cultural não é uma questão de tolerância — é uma questão de inteligência. A surpresa é a forma mais antiga de aprender.\n\nBem-vindos ao festival." },
+          content:"Há uma palavra grega que não tem tradução simples: paideia. Significa a formação completa do ser humano — não através de salas de aula, mas através da vida partilhada, da arte, do jogo, do espanto.\n\nEste festival é isso. Durante dois dias, o parque deixa de ser um parque. Torna-se uma cidade dentro da cidade — onde uma criança segue um bufão sem saber para onde vai, onde dois desconhecidos riem da mesma coisa ao mesmo tempo, onde a música sobe da relva sem aviso.\n\nNão há bilhetes. Não há programa obrigatório. Acreditamos que a diversidade cultural não é uma questão de tolerância — é uma questão de inteligência. A surpresa é a forma mais antiga de aprender." },
         { heading:"Programa por Espaço", festival:[
-          { espaco:"Parque Urbano", icon:"🌳", cor:"#1A5E3C", eventos:["Pedro Charneca — Saltimbanco da Charneca (teatro-circo itinerante)","Jazz na relva — concerto ao ar livre","Teatro Só — Odemira (teatro de rua, mudo, visualmente poético)","Animação familiar contínua","Restauração com operadores locais"] },
-          { espaco:"Museu", icon:"🏛", cor:"#6B2D1A", eventos:["Exposição inaugural — José Carlos Villar, o Poeta","Curadoria: Rui Santos","2 momentos musicais na inauguração — universo sonoro do poeta","Quarteto de cordas — breve, no interior da exposição"] },
+          { espaco:"Parque Urbano", icon:"🌳", cor:"#1A5E3C", eventos:["Teatro de rua / circo itinerante","Jazz na relva — concerto ao ar livre","Animação familiar contínua","Restauração com operadores locais"] },
+          { espaco:"Museu", icon:"🏛", cor:"#6B2D1A", eventos:["Exposição inaugural — José Carlos Villar, o Poeta","Curadoria: Rui Santos","Momentos musicais na inauguração"] },
           { espaco:"Auditório da Biblioteca", icon:"📚", cor:"#1A3C5E", eventos:["Espetáculos programados — sessões marcadas","Concerto de abertura oficial — sábado à noite","Sessão de poesia — domingo à tarde"] },
-          { espaco:"Casa em Pedra", icon:"🪨", cor:"#4A2060", eventos:["Bar cultural — sócios fundadores e mecenas","Sessão musical de encerramento — domingo à noite (convite)"] }
+          { espaco:"Casa em Pedra", icon:"🪨", cor:"#4A2060", eventos:["Bar cultural — sócios fundadores e mecenas","Sessão musical de encerramento — domingo (convite)"] }
         ]},
         { heading:"Orçamento Estimado", table:{ cols:["Rubrica","Estimativa","Notas"], rows:[
           ["Artistas / Companhias","8.000€–15.000€","Cachets solidários para edição inaugural"],
@@ -240,8 +566,6 @@
           ["Palco / Estruturas","1.500€–3.000€","Aluguer"],
           ["Segurança","800€–1.500€","Empresa + PSP"],
           ["Comunicação","500€–1.000€","Design, impressão, digital"],
-          ["Logística / WC / Limpeza","500€–800€",""],
-          ["Seguros do evento","300€–600€",""],
           ["SPA / GDA","400€–800€","Direitos de autor — obrigatório"],
           ["Imprevistos (10%)","1.400€–2.600€",""],
           ["TOTAL","15.000€–29.000€","Mecenato privado + apoio camarário"]
@@ -249,10 +573,8 @@
         { heading:"Licenças do Festival", burocracia:[
           { passo:"F.1", titulo:"Licença Espaço Público — Parque Urbano", prazo:"60 dias antes — julho", entidade:"Câmara Municipal", custo:"Possível isenção por protocolo", docs:["Requerimento com planta do espaço e programa detalhado","Comprovativo do seguro de responsabilidade civil"] },
           { passo:"F.2", titulo:"Comunicação à PSP / GNR", prazo:"10 dias antes", entidade:"PSP / GNR local", custo:"0€", docs:["Comunicação prévia (Lei 53/2008)","Programa, estimativa de público, medidas de segurança"] },
-          { passo:"F.3", titulo:"Licença Especial de Ruído", prazo:"30 dias antes", entidade:"Câmara — Divisão de Ambiente", custo:"Variável", docs:["Pedido de autorização para som amplificado ao ar livre","Horários e dB máximos previstos"] },
-          { passo:"F.4", titulo:"IGAC — Espetáculos em Espaço Fechado", prazo:"30 dias antes", entidade:"IGAC", custo:"Variável", docs:["Ficha técnica dos espetáculos no auditório","Verificação do alvará do espaço"] },
-          { passo:"F.5", titulo:"SPA / GDA — Direitos de Autor", prazo:"30 dias antes", entidade:"SPA / GDA", custo:"Calculado por programa", docs:["Declaração de obras a executar publicamente","Contactar com antecedência para simulação de valores"] },
-          { passo:"F.6", titulo:"ASAE — Restauração", prazo:"15 dias antes", entidade:"ASAE", custo:"0€", docs:["Comunicação prévia de venda de alimentos","Identificação dos operadores e certificados de higiene"] }
+          { passo:"F.3", titulo:"Licença Especial de Ruído", prazo:"30 dias antes", entidade:"Câmara — Divisão de Ambiente", custo:"Variável", docs:["Pedido de autorização para som amplificado ao ar livre"] },
+          { passo:"F.4", titulo:"SPA / GDA — Direitos de Autor", prazo:"30 dias antes", entidade:"SPA / GDA", custo:"Calculado por programa", docs:["Declaração de obras a executar publicamente"] }
         ]}
       ]},
       { id:4, icon:"🗣", title:"Porta-Voz", retorica:true },
@@ -260,11 +582,9 @@
       { id:6, icon:"🌳", title:"Parque Urbano", parqueUrbano:true },
       { id:7, icon:"🎤", title:"Presidente em Público", presidentePublico:true },
       { id:8, icon:"⬡", title:"50 Sócios", sections:[
-        { heading:"Forma Jurídica: Associação Cultural", content:"A associação é a forma mais adequada: sem fins lucrativos, fiscalmente favorável, elegível para apoios públicos e mecenato, com governação democrática e participada." },
         { heading:"Perfil dos Sócios Fundadores", list:[
           ["Perfil","Personalidades da cultura, empresários, profissionais liberais, artistas, professores, académicos e figuras públicas locais e regionais"],
           ["Processo","Convite pessoal e direto pelo fundador — seleção criteriosa de pessoas que compreendem e partilham a missão"],
-          ["Formalização","Cada fundador preenche a ficha, assina a ata e paga a quota inaugural na data da assembleia"],
           ["Quota fundadora","100€ a 250€ — valor único, acrescido da quota anual regular"]
         ]},
         { heading:"Porque 50?", content:"Cinquenta sócios fundadores é o mínimo para ter legitimidade social visível, base financeira inicial relevante, rede de embaixadores e credibilidade perante mecenas, câmara e imprensa." }
@@ -296,8 +616,7 @@
           ["Mecenato privado","Maioritário — empresas locais, regionais e nacionais"],
           ["Apoio público","Câmara Municipal, DGArtes, Portugal 2030"],
           ["Quotas de sócios","Base financeira estável e independente de ciclos políticos"],
-          ["Bilheteira seletiva","Apenas para eventos com custos elevados — sempre preço acessível"],
-          ["Aluguer de espaços","Eventos externos compatíveis com a missão"]
+          ["Bilheteira seletiva","Apenas para eventos com custos elevados — sempre preço acessível"]
         ]},
         { heading:"Tabela de Patrocínios", table:{ cols:["Nível","Valor Anual","Contrapartidas"], rows:[
           ["Fundador","5.000€+","Nome/logo permanente, convites VIP, relatório exclusivo"],
@@ -336,11 +655,11 @@
           { prazo:"Julho", tarefa:"Submeter licenças do festival (câmara, ruído, PSP)", resp:"Coord. produção" },
           { prazo:"Julho", tarefa:"Contratar artistas e companhias para o festival", resp:"Coord. programação" },
           { prazo:"Agosto", tarefa:"Lançar site, redes sociais e primeira newsletter", resp:"Resp. comunicação" },
-          { prazo:"Agosto", tarefa:"Campanha de comunicação do festival", resp:"Resp. comunicação" },
           { prazo:"Set. sem.1", tarefa:"Montagem de estruturas e ensaios técnicos", resp:"Produção" },
           { prazo:"Set. sem.2", tarefa:"🎪 FESTIVAL INAUGURAL — Sábado e Domingo", resp:"Toda a equipa" }
         ]}
-      ]}
+      ]},
+
     ];
 
     const mesColors = { "Setembro":"#1A5E3C","Outubro":"#1A3C5E","Novembro":"#4A2060","Dezembro":"#6B2D1A" };
@@ -353,23 +672,54 @@
       const [active, setActive] = useState(0);
       const [retOpen, setRetOpen] = useState(null);
       const [festOpen, setFestOpen] = useState(null);
+      const [sociosAberto, setSociosAberto] = useState(false);
       const mod = modules[active];
 
       return (
         <div style={{ fontFamily:"Georgia, serif", background:"#F5F0E8", minHeight:"100vh", display:"flex", flexDirection:"column" }}>
 
-          <div style={{ background:"#1A3C5E", padding:"18px 24px 12px", borderBottom:"4px solid #C8973A" }}>
+          <div style={{ background:"#1A3C5E", padding:"18px 24px 12px", borderBottom:"4px solid #C8973A", position:"relative" }}>
             <div style={{ fontSize:10, letterSpacing:4, color:"#C8973A", textTransform:"uppercase", marginBottom:3 }}>Documento de Orientação Estratégica</div>
             <div style={{ fontSize:20, color:"#F5F0E8", fontWeight:"bold" }}>Projeto Cultural · Paços de Ferreira</div>
             <div style={{ fontSize:11, color:"#aac4d8", marginTop:2 }}>Festival Inaugural · 2.º Fim de Semana de Setembro 2026 · Entrada Livre</div>
+            <button onClick={() => setSociosAberto(true)} style={{
+              position:"absolute", top:14, right:16,
+              background:"#C8973A", border:"none", borderRadius:8,
+              padding:"7px 12px", cursor:"pointer",
+              fontFamily:"Georgia, serif", fontSize:11, fontWeight:"bold",
+              color:"#1A3C5E", display:"flex", alignItems:"center", gap:5,
+              boxShadow:"0 2px 8px rgba(0,0,0,0.3)"
+            }}>🤝 Sócios Fundadores</button>
           </div>
+
+          {/* PAINEL SÓCIOS — overlay lateral */}
+          {sociosAberto && (
+            <div style={{ position:"fixed", inset:0, background:"rgba(15,35,56,0.6)", zIndex:500 }}
+              onClick={() => setSociosAberto(false)}>
+              <div style={{ position:"absolute", top:0, right:0, bottom:0, width:"min(420px, 100vw)",
+                background:"#F7F2EA", boxShadow:"-4px 0 24px rgba(0,0,0,0.2)",
+                display:"flex", flexDirection:"column", overflowY:"auto" }}
+                onClick={e => e.stopPropagation()}>
+                <div style={{ background:"#1A3C5E", padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:"3px solid #C8973A" }}>
+                  <div style={{ color:"#C8973A", fontFamily:"Georgia, serif", fontSize:15, fontWeight:"bold" }}>🤝 Sócios Fundadores</div>
+                  <button onClick={() => setSociosAberto(false)} style={{ background:"none", border:"none", color:"#aac4d8", fontSize:20, cursor:"pointer", lineHeight:1 }}>×</button>
+                </div>
+                <div style={{ padding:"1rem" }}>
+                  <SociosModule />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ display:"flex", overflowX:"auto", background:"#22344A", borderBottom:"2px solid #C8973A", padding:"0 4px" }}>
             {modules.map((m,i) => (
               <button key={i} onClick={() => setActive(i)} style={{
-                background:"none", border:"none", cursor:"pointer", padding:"9px 10px",
-                color: active===i ? "#C8973A" : "#aac4d8", fontSize:10, fontFamily:"Georgia, serif",
-                borderBottom: active===i ? "3px solid #C8973A" : "3px solid transparent", whiteSpace:"nowrap"
+                background:"none",
+                border:"none", cursor:"pointer", padding:"9px 10px",
+                color: active===i ? "#C8973A" : "#aac4d8",
+                fontSize:10, fontFamily:"Georgia, serif",
+                borderBottom: active===i ? "3px solid #C8973A" : "3px solid transparent",
+                whiteSpace:"nowrap"
               }}>{m.icon} {i+1}. {m.title}</button>
             ))}
           </div>
@@ -470,7 +820,6 @@
             {/* PRESIDENTE EM PÚBLICO */}
             {mod.presidentePublico && (
               <div>
-                <p style={{ color:"#555", fontSize:13, lineHeight:1.7, marginBottom:18 }}>Frases preparadas, perguntas difíceis com respostas, e mnémónicas para organizar o raciocínio em tempo real.</p>
                 <SectionTitle>Frases Preparadas por Contexto</SectionTitle>
                 {presidentePublico.frases.map((f,i) => (
                   <div key={i} style={{ display:"flex", background: i%2===0?"#EDE8DE":"#F5F0E8", borderLeft:"3px solid #C8973A", marginBottom:5 }}>
@@ -493,8 +842,7 @@
                   ))}
                 </div>
                 <div style={{ marginTop:18 }}>
-                  <SectionTitle>Mnémónicas — Para Organizar o Raciocínio em Público</SectionTitle>
-                  <p style={{ fontSize:12, color:"#666", marginBottom:10, fontStyle:"italic" }}>Quando perder o fio — respira e lembra uma destas siglas.</p>
+                  <SectionTitle>Mnémónicas</SectionTitle>
                   {presidentePublico.mnemonicas.map((mn,i) => (
                     <div key={i} style={{ display:"grid", gridTemplateColumns:"100px 1fr 1fr", background: i%2===0?"#EDE8DE":"#F5F0E8", borderLeft:"4px solid #C8973A", marginBottom:5 }}>
                       <div style={{ padding:"10px 12px", fontWeight:"bold", fontSize:15, color:"#C8973A", display:"flex", alignItems:"center", justifyContent:"center" }}>{mn.sigla}</div>
@@ -510,9 +858,7 @@
             {!mod.retorica && !mod.portavozFestival && !mod.parqueUrbano && !mod.presidentePublico && mod.sections && mod.sections.map((sec,si) => (
               <div key={si} style={{ marginBottom:22 }}>
                 <SectionTitle>{sec.heading}</SectionTitle>
-
                 {sec.content && <p style={{ color:"#2C2C2C", lineHeight:1.8, fontSize:13, margin:0, whiteSpace:"pre-line" }}>{sec.content}</p>}
-
                 {sec.downloads && (
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                     {wordDocs.map((d,di) => (
@@ -528,7 +874,6 @@
                     ))}
                   </div>
                 )}
-
                 {sec.list && (
                   <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
                     {sec.list.map(([k,v],li) => (
@@ -539,13 +884,11 @@
                     ))}
                   </div>
                 )}
-
                 {sec.steps && (
                   <ol style={{ margin:0, paddingLeft:20, display:"flex", flexDirection:"column", gap:6 }}>
                     {sec.steps.map((s,i) => <li key={i} style={{ fontSize:12, color:"#2C2C2C", lineHeight:1.6 }}>{s}</li>)}
                   </ol>
                 )}
-
                 {sec.table && (
                   <div style={{ overflowX:"auto" }}>
                     <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
@@ -562,7 +905,6 @@
                     </table>
                   </div>
                 )}
-
                 {sec.burocracia && sec.burocracia.map((b,bi) => (
                   <div key={bi} style={{ marginBottom:10, border:"1px solid #C8D8B0", borderLeft:"4px solid #3A7A1A", background:"#F0F5EA" }}>
                     <div style={{ background:"#3A7A1A", padding:"7px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -582,7 +924,6 @@
                     </div>
                   </div>
                 ))}
-
                 {sec.agenda && (
                   <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
                     {sec.agenda.map((ev,i) => (
@@ -600,7 +941,6 @@
                     ))}
                   </div>
                 )}
-
                 {sec.festival && (
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                     {sec.festival.map((f,fi) => (
@@ -617,7 +957,6 @@
                     ))}
                   </div>
                 )}
-
                 {sec.roadmap && (
                   <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                     {sec.roadmap.map((item,i) => {
