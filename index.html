@@ -269,14 +269,70 @@
         mostrarToast('Removido');
       }
 
-      function exportarCSV() {
+      function exportarHTML() {
         if (!socios.length) { mostrarToast('Sem dados para exportar'); return; }
-        const linhas = [['Nº','Nome','Telemóvel','Email','Profissão','Notas']];
-        socios.forEach((s,i) => linhas.push([i+1, s.nome, s.tel||'', s.email||'', s.profissao||'', s.notas||'']));
-        const csv = linhas.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-        const blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = 'socios-fundadores.csv'; a.click();
+        const data = new Date().toLocaleDateString('pt-PT');
+        const linhas = socios.map((s,i) => `
+          <tr>
+            <td style="text-align:center;color:#C8973A;font-weight:bold;font-size:14pt">${i+1}</td>
+            <td style="font-weight:bold;color:#1A3C5E">${s.nome||'—'}</td>
+            <td>${s.profissao||'—'}</td>
+            <td>${s.tel||'—'}</td>
+            <td>${s.email||'—'}</td>
+            <td style="font-style:italic;color:#666">${s.notas||''}</td>
+          </tr>`).join('');
+        const html = `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8">
+          <title>Sócios Fundadores</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600&display=swap');
+            body { font-family: 'EB Garamond', Georgia, serif; background:#F5F0E8; margin:0; padding:2cm; }
+            .cabecalho { background:#1A3C5E; color:#F5F0E8; padding:20px 28px; border-bottom:4px solid #C8973A; margin-bottom:28px; }
+            .titulo { font-size:20pt; font-weight:bold; margin-bottom:4px; }
+            .sub { font-size:10pt; color:#aac4d8; letter-spacing:2px; text-transform:uppercase; }
+            .meta { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+            .meta-label { font-size:10pt; color:#888; letter-spacing:1px; text-transform:uppercase; }
+            .contador { font-size:28pt; color:#C8973A; font-weight:bold; }
+            .barra-wrap { background:#D4CDBF; border-radius:99px; height:8px; width:200px; overflow:hidden; }
+            .barra-fill { background:#C8973A; height:100%; border-radius:99px; width:${Math.round((socios.length/50)*100)}%; }
+            table { width:100%; border-collapse:collapse; font-size:11pt; }
+            thead tr { background:#1A3C5E; color:#F5F0E8; }
+            th { padding:9px 12px; text-align:left; font-weight:600; letter-spacing:0.5px; }
+            tbody tr:nth-child(even) { background:#EDE8DE; }
+            tbody tr:nth-child(odd) { background:#F5F0E8; }
+            td { padding:9px 12px; border-bottom:1px solid #D4CDBF; vertical-align:top; }
+            .rodape { margin-top:24px; font-size:9pt; color:#aaa; text-align:right; }
+            @media print { body { padding:1cm; } .cabecalho { -webkit-print-color-adjust:exact; print-color-adjust:exact; } thead tr { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+          </style>
+        </head><body>
+          <div class="cabecalho">
+            <div class="titulo">Projeto Cultural · Paços de Ferreira</div>
+            <div class="sub">Lista de Sócios Fundadores</div>
+          </div>
+          <div class="meta">
+            <div>
+              <div class="meta-label">Total inscrito</div>
+              <div class="contador">${socios.length} <span style="font-size:14pt;color:#888">/ 50</span></div>
+              <div class="barra-wrap"><div class="barra-fill"></div></div>
+            </div>
+            <div style="text-align:right;color:#888;font-size:10pt">Gerado em ${data}</div>
+          </div>
+          <table>
+            <thead><tr>
+              <th style="width:36px">Nº</th>
+              <th>Nome</th>
+              <th>Profissão</th>
+              <th>Telemóvel</th>
+              <th>Email</th>
+              <th>Notas</th>
+            </tr></thead>
+            <tbody>${linhas}</tbody>
+          </table>
+          <div class="rodape">Documento de trabalho interno · Projeto Cultural Paços de Ferreira</div>
+        </body></html>`;
+        const w = window.open('', '_blank');
+        w.document.write(html);
+        w.document.close();
+        setTimeout(() => w.print(), 500);
       }
 
       // ── PAINEL PRINCIPAL ──
@@ -306,7 +362,7 @@
           {/* Header lista */}
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.6rem' }}>
             <div style={{ fontSize:'0.65rem', letterSpacing:'0.1em', textTransform:'uppercase', color:'#888' }}>Inscritos</div>
-            <button className="btn-exportar-csv" onClick={exportarCSV}>Exportar CSV ↓</button>
+            <button className="btn-exportar-csv" onClick={exportarHTML}>Imprimir / PDF ↗</button>
           </div>
 
           {/* Lista */}
